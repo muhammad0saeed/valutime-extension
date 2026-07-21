@@ -1,88 +1,274 @@
 'use strict';
-// ValuTime v1.5.0
+// ValuTime v1.6.0
 
 // ═══════════════════════════════════════════════════════
 //  CITIES DATABASE
 // ═══════════════════════════════════════════════════════
 const CITIES_DB = [
-  {name:'Dhaka',         country:'Bangladesh',    tz:'Asia/Dhaka',                     flag:'🇧🇩'},
-  {name:'London',        country:'United Kingdom', tz:'Europe/London',                  flag:'🇬🇧'},
-  {name:'Rome',          country:'Italy',          tz:'Europe/Rome',                    flag:'🇮🇹'},
+  // ─── North America ───────────────────────────────────
   {name:'New York',      country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
-  {name:'Los Angeles',   country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
-  {name:'Chicago',       country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
-  {name:'San Francisco', country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
-  {name:'Seattle',       country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
-  {name:'Miami',         country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
+  {name:'Washington DC', country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
   {name:'Boston',        country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
+  {name:'Philadelphia',  country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
+  {name:'Miami',         country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
+  {name:'Atlanta',       country:'USA',            tz:'America/New_York',               flag:'🇺🇸'},
+  {name:'Detroit',       country:'USA',            tz:'America/Detroit',                flag:'🇺🇸'},
+  {name:'Chicago',       country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
+  {name:'Houston',       country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
   {name:'Dallas',        country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
+  {name:'Austin',        country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
+  {name:'San Antonio',   country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
+  {name:'Minneapolis',   country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
+  {name:'New Orleans',   country:'USA',            tz:'America/Chicago',                flag:'🇺🇸'},
   {name:'Denver',        country:'USA',            tz:'America/Denver',                 flag:'🇺🇸'},
+  {name:'Salt Lake City',country:'USA',            tz:'America/Denver',                 flag:'🇺🇸'},
+  {name:'Phoenix',       country:'USA',            tz:'America/Phoenix',                flag:'🇺🇸'},
+  {name:'Los Angeles',   country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'San Francisco', country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'San Diego',     country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'San Jose',      country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'Seattle',       country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'Portland',      country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'Las Vegas',     country:'USA',            tz:'America/Los_Angeles',            flag:'🇺🇸'},
+  {name:'Anchorage',     country:'USA',            tz:'America/Anchorage',              flag:'🇺🇸'},
+  {name:'Honolulu',      country:'USA',            tz:'Pacific/Honolulu',               flag:'🇺🇸'},
   {name:'Toronto',       country:'Canada',         tz:'America/Toronto',                flag:'🇨🇦'},
-  {name:'Vancouver',     country:'Canada',         tz:'America/Vancouver',              flag:'🇨🇦'},
+  {name:'Ottawa',        country:'Canada',         tz:'America/Toronto',                flag:'🇨🇦'},
   {name:'Montreal',      country:'Canada',         tz:'America/Toronto',                flag:'🇨🇦'},
+  {name:'Quebec City',   country:'Canada',         tz:'America/Toronto',                flag:'🇨🇦'},
+  {name:'Winnipeg',      country:'Canada',         tz:'America/Winnipeg',               flag:'🇨🇦'},
+  {name:'Calgary',       country:'Canada',         tz:'America/Edmonton',               flag:'🇨🇦'},
+  {name:'Edmonton',      country:'Canada',         tz:'America/Edmonton',               flag:'🇨🇦'},
+  {name:'Vancouver',     country:'Canada',         tz:'America/Vancouver',              flag:'🇨🇦'},
+  {name:'Halifax',       country:'Canada',         tz:'America/Halifax',                flag:'🇨🇦'},
+  {name:"St. John's",    country:'Canada',         tz:'America/St_Johns',               flag:'🇨🇦'},
+  {name:'Mexico City',   country:'Mexico',         tz:'America/Mexico_City',            flag:'🇲🇽'},
+  {name:'Guadalajara',   country:'Mexico',         tz:'America/Mexico_City',            flag:'🇲🇽'},
+  {name:'Monterrey',     country:'Mexico',         tz:'America/Monterrey',              flag:'🇲🇽'},
+  {name:'Cancún',        country:'Mexico',         tz:'America/Cancun',                 flag:'🇲🇽'},
+  {name:'Tijuana',       country:'Mexico',         tz:'America/Tijuana',                flag:'🇲🇽'},
+
+  // ─── Central America & Caribbean ─────────────────────
+  {name:'Guatemala City',country:'Guatemala',      tz:'America/Guatemala',              flag:'🇬🇹'},
+  {name:'San Salvador',  country:'El Salvador',    tz:'America/El_Salvador',            flag:'🇸🇻'},
+  {name:'Tegucigalpa',   country:'Honduras',       tz:'America/Tegucigalpa',            flag:'🇭🇳'},
+  {name:'Managua',       country:'Nicaragua',      tz:'America/Managua',                flag:'🇳🇮'},
+  {name:'San José',      country:'Costa Rica',     tz:'America/Costa_Rica',             flag:'🇨🇷'},
+  {name:'Panama City',   country:'Panama',         tz:'America/Panama',                 flag:'🇵🇦'},
+  {name:'Havana',        country:'Cuba',           tz:'America/Havana',                 flag:'🇨🇺'},
+  {name:'Santo Domingo', country:'Dominican Rep.', tz:'America/Santo_Domingo',          flag:'🇩🇴'},
+  {name:'San Juan',      country:'Puerto Rico',    tz:'America/Puerto_Rico',            flag:'🇵🇷'},
+  {name:'Kingston',      country:'Jamaica',        tz:'America/Jamaica',                flag:'🇯🇲'},
+  {name:'Port-au-Prince',country:'Haiti',          tz:'America/Port-au-Prince',         flag:'🇭🇹'},
+  {name:'Nassau',        country:'Bahamas',        tz:'America/Nassau',                 flag:'🇧🇸'},
+
+  // ─── South America ───────────────────────────────────
+  {name:'São Paulo',     country:'Brazil',         tz:'America/Sao_Paulo',              flag:'🇧🇷'},
+  {name:'Rio de Janeiro',country:'Brazil',         tz:'America/Sao_Paulo',              flag:'🇧🇷'},
+  {name:'Brasília',      country:'Brazil',         tz:'America/Sao_Paulo',              flag:'🇧🇷'},
+  {name:'Manaus',        country:'Brazil',         tz:'America/Manaus',                 flag:'🇧🇷'},
+  {name:'Buenos Aires',  country:'Argentina',      tz:'America/Argentina/Buenos_Aires', flag:'🇦🇷'},
+  {name:'Córdoba',       country:'Argentina',      tz:'America/Argentina/Cordoba',      flag:'🇦🇷'},
+  {name:'Bogotá',        country:'Colombia',       tz:'America/Bogota',                 flag:'🇨🇴'},
+  {name:'Medellín',      country:'Colombia',       tz:'America/Bogota',                 flag:'🇨🇴'},
+  {name:'Lima',          country:'Peru',           tz:'America/Lima',                   flag:'🇵🇪'},
+  {name:'Santiago',      country:'Chile',          tz:'America/Santiago',               flag:'🇨🇱'},
+  {name:'Caracas',       country:'Venezuela',      tz:'America/Caracas',                flag:'🇻🇪'},
+  {name:'Quito',         country:'Ecuador',        tz:'America/Guayaquil',              flag:'🇪🇨'},
+  {name:'La Paz',        country:'Bolivia',        tz:'America/La_Paz',                 flag:'🇧🇴'},
+  {name:'Asunción',      country:'Paraguay',       tz:'America/Asuncion',               flag:'🇵🇾'},
+  {name:'Montevideo',    country:'Uruguay',        tz:'America/Montevideo',             flag:'🇺🇾'},
+  {name:'Georgetown',    country:'Guyana',         tz:'America/Guyana',                 flag:'🇬🇾'},
+  {name:'Paramaribo',    country:'Suriname',       tz:'America/Paramaribo',             flag:'🇸🇷'},
+
+  // ─── Europe ──────────────────────────────────────────
+  {name:'London',        country:'United Kingdom', tz:'Europe/London',                  flag:'🇬🇧'},
+  {name:'Manchester',    country:'United Kingdom', tz:'Europe/London',                  flag:'🇬🇧'},
+  {name:'Edinburgh',     country:'United Kingdom', tz:'Europe/London',                  flag:'🇬🇧'},
+  {name:'Dublin',        country:'Ireland',        tz:'Europe/Dublin',                  flag:'🇮🇪'},
+  {name:'Lisbon',        country:'Portugal',       tz:'Europe/Lisbon',                  flag:'🇵🇹'},
+  {name:'Porto',         country:'Portugal',       tz:'Europe/Lisbon',                  flag:'🇵🇹'},
+  {name:'Reykjavik',     country:'Iceland',        tz:'Atlantic/Reykjavik',             flag:'🇮🇸'},
   {name:'Paris',         country:'France',         tz:'Europe/Paris',                   flag:'🇫🇷'},
-  {name:'Berlin',        country:'Germany',        tz:'Europe/Berlin',                  flag:'🇩🇪'},
   {name:'Madrid',        country:'Spain',          tz:'Europe/Madrid',                  flag:'🇪🇸'},
+  {name:'Barcelona',     country:'Spain',          tz:'Europe/Madrid',                  flag:'🇪🇸'},
+  {name:'Berlin',        country:'Germany',        tz:'Europe/Berlin',                  flag:'🇩🇪'},
+  {name:'Munich',        country:'Germany',        tz:'Europe/Berlin',                  flag:'🇩🇪'},
+  {name:'Frankfurt',     country:'Germany',        tz:'Europe/Berlin',                  flag:'🇩🇪'},
+  {name:'Hamburg',       country:'Germany',        tz:'Europe/Berlin',                  flag:'🇩🇪'},
+  {name:'Rome',          country:'Italy',          tz:'Europe/Rome',                    flag:'🇮🇹'},
+  {name:'Milan',         country:'Italy',          tz:'Europe/Rome',                    flag:'🇮🇹'},
   {name:'Amsterdam',     country:'Netherlands',    tz:'Europe/Amsterdam',               flag:'🇳🇱'},
+  {name:'Rotterdam',     country:'Netherlands',    tz:'Europe/Amsterdam',               flag:'🇳🇱'},
+  {name:'Brussels',      country:'Belgium',        tz:'Europe/Brussels',                flag:'🇧🇪'},
+  {name:'Luxembourg',    country:'Luxembourg',     tz:'Europe/Luxembourg',              flag:'🇱🇺'},
   {name:'Zurich',        country:'Switzerland',    tz:'Europe/Zurich',                  flag:'🇨🇭'},
+  {name:'Geneva',        country:'Switzerland',    tz:'Europe/Zurich',                  flag:'🇨🇭'},
+  {name:'Vienna',        country:'Austria',        tz:'Europe/Vienna',                  flag:'🇦🇹'},
+  {name:'Monaco',        country:'Monaco',         tz:'Europe/Monaco',                  flag:'🇲🇨'},
+  {name:'Andorra la Vella',country:'Andorra',      tz:'Europe/Andorra',                 flag:'🇦🇩'},
   {name:'Stockholm',     country:'Sweden',         tz:'Europe/Stockholm',               flag:'🇸🇪'},
   {name:'Oslo',          country:'Norway',         tz:'Europe/Oslo',                    flag:'🇳🇴'},
   {name:'Copenhagen',    country:'Denmark',        tz:'Europe/Copenhagen',              flag:'🇩🇰'},
   {name:'Helsinki',      country:'Finland',        tz:'Europe/Helsinki',                flag:'🇫🇮'},
   {name:'Warsaw',        country:'Poland',         tz:'Europe/Warsaw',                  flag:'🇵🇱'},
-  {name:'Vienna',        country:'Austria',        tz:'Europe/Vienna',                  flag:'🇦🇹'},
   {name:'Prague',        country:'Czechia',        tz:'Europe/Prague',                  flag:'🇨🇿'},
+  {name:'Bratislava',    country:'Slovakia',       tz:'Europe/Bratislava',              flag:'🇸🇰'},
   {name:'Budapest',      country:'Hungary',        tz:'Europe/Budapest',                flag:'🇭🇺'},
+  {name:'Ljubljana',     country:'Slovenia',       tz:'Europe/Ljubljana',               flag:'🇸🇮'},
+  {name:'Zagreb',        country:'Croatia',        tz:'Europe/Zagreb',                  flag:'🇭🇷'},
+  {name:'Sarajevo',      country:'Bosnia',         tz:'Europe/Sarajevo',                flag:'🇧🇦'},
+  {name:'Belgrade',      country:'Serbia',         tz:'Europe/Belgrade',                flag:'🇷🇸'},
+  {name:'Podgorica',     country:'Montenegro',     tz:'Europe/Podgorica',               flag:'🇲🇪'},
+  {name:'Skopje',        country:'North Macedonia',tz:'Europe/Skopje',                  flag:'🇲🇰'},
+  {name:'Tirana',        country:'Albania',        tz:'Europe/Tirane',                  flag:'🇦🇱'},
+  {name:'Bucharest',     country:'Romania',        tz:'Europe/Bucharest',               flag:'🇷🇴'},
+  {name:'Sofia',         country:'Bulgaria',       tz:'Europe/Sofia',                   flag:'🇧🇬'},
   {name:'Athens',        country:'Greece',         tz:'Europe/Athens',                  flag:'🇬🇷'},
-  {name:'Istanbul',      country:'Turkey',         tz:'Europe/Istanbul',                flag:'🇹🇷'},
-  {name:'Moscow',        country:'Russia',         tz:'Europe/Moscow',                  flag:'🇷🇺'},
+  {name:'Valletta',      country:'Malta',          tz:'Europe/Malta',                   flag:'🇲🇹'},
+  {name:'Nicosia',       country:'Cyprus',         tz:'Asia/Nicosia',                   flag:'🇨🇾'},
+  {name:'Chisinau',      country:'Moldova',        tz:'Europe/Chisinau',                flag:'🇲🇩'},
   {name:'Kyiv',          country:'Ukraine',        tz:'Europe/Kyiv',                    flag:'🇺🇦'},
-  {name:'Lisbon',        country:'Portugal',       tz:'Europe/Lisbon',                  flag:'🇵🇹'},
-  {name:'Dublin',        country:'Ireland',        tz:'Europe/Dublin',                  flag:'🇮🇪'},
-  {name:'Brussels',      country:'Belgium',        tz:'Europe/Brussels',                flag:'🇧🇪'},
+  {name:'Minsk',         country:'Belarus',        tz:'Europe/Minsk',                   flag:'🇧🇾'},
+  {name:'Vilnius',       country:'Lithuania',      tz:'Europe/Vilnius',                 flag:'🇱🇹'},
+  {name:'Riga',          country:'Latvia',         tz:'Europe/Riga',                    flag:'🇱🇻'},
+  {name:'Tallinn',       country:'Estonia',        tz:'Europe/Tallinn',                 flag:'🇪🇪'},
+  {name:'Istanbul',      country:'Turkey',         tz:'Europe/Istanbul',                flag:'🇹🇷'},
+  {name:'Ankara',        country:'Turkey',         tz:'Europe/Istanbul',                flag:'🇹🇷'},
+  {name:'Moscow',        country:'Russia',         tz:'Europe/Moscow',                  flag:'🇷🇺'},
+  {name:'Saint Petersburg',country:'Russia',       tz:'Europe/Moscow',                  flag:'🇷🇺'},
+  {name:'Yekaterinburg', country:'Russia',         tz:'Asia/Yekaterinburg',             flag:'🇷🇺'},
+  {name:'Novosibirsk',   country:'Russia',         tz:'Asia/Novosibirsk',               flag:'🇷🇺'},
+  {name:'Vladivostok',   country:'Russia',         tz:'Asia/Vladivostok',               flag:'🇷🇺'},
+
+  // ─── Middle East ─────────────────────────────────────
   {name:'Dubai',         country:'UAE',            tz:'Asia/Dubai',                     flag:'🇦🇪'},
+  {name:'Abu Dhabi',     country:'UAE',            tz:'Asia/Dubai',                     flag:'🇦🇪'},
   {name:'Riyadh',        country:'Saudi Arabia',   tz:'Asia/Riyadh',                    flag:'🇸🇦'},
+  {name:'Jeddah',        country:'Saudi Arabia',   tz:'Asia/Riyadh',                    flag:'🇸🇦'},
   {name:'Doha',          country:'Qatar',          tz:'Asia/Qatar',                     flag:'🇶🇦'},
   {name:'Kuwait City',   country:'Kuwait',         tz:'Asia/Kuwait',                    flag:'🇰🇼'},
+  {name:'Manama',        country:'Bahrain',        tz:'Asia/Bahrain',                   flag:'🇧🇭'},
+  {name:'Muscat',        country:'Oman',           tz:'Asia/Muscat',                    flag:'🇴🇲'},
   {name:'Beirut',        country:'Lebanon',        tz:'Asia/Beirut',                    flag:'🇱🇧'},
+  {name:'Amman',         country:'Jordan',         tz:'Asia/Amman',                     flag:'🇯🇴'},
+  {name:'Damascus',      country:'Syria',          tz:'Asia/Damascus',                  flag:'🇸🇾'},
+  {name:'Baghdad',       country:'Iraq',           tz:'Asia/Baghdad',                   flag:'🇮🇶'},
+  {name:'Tehran',        country:'Iran',           tz:'Asia/Tehran',                    flag:'🇮🇷'},
+  {name:'Jerusalem',     country:'Israel',         tz:'Asia/Jerusalem',                 flag:'🇮🇱'},
   {name:'Tel Aviv',      country:'Israel',         tz:'Asia/Jerusalem',                 flag:'🇮🇱'},
-  {name:'Karachi',       country:'Pakistan',       tz:'Asia/Karachi',                   flag:'🇵🇰'},
-  {name:'Islamabad',     country:'Pakistan',       tz:'Asia/Karachi',                   flag:'🇵🇰'},
+  {name:"Sana'a",        country:'Yemen',          tz:'Asia/Aden',                      flag:'🇾🇪'},
+
+  // ─── Africa ──────────────────────────────────────────
+  {name:'Cairo',         country:'Egypt',          tz:'Africa/Cairo',                   flag:'🇪🇬'},
+  {name:'Alexandria',    country:'Egypt',          tz:'Africa/Cairo',                   flag:'🇪🇬'},
+  {name:'Casablanca',    country:'Morocco',        tz:'Africa/Casablanca',              flag:'🇲🇦'},
+  {name:'Rabat',         country:'Morocco',        tz:'Africa/Casablanca',              flag:'🇲🇦'},
+  {name:'Algiers',       country:'Algeria',        tz:'Africa/Algiers',                 flag:'🇩🇿'},
+  {name:'Tunis',         country:'Tunisia',        tz:'Africa/Tunis',                   flag:'🇹🇳'},
+  {name:'Tripoli',       country:'Libya',          tz:'Africa/Tripoli',                 flag:'🇱🇾'},
+  {name:'Khartoum',      country:'Sudan',          tz:'Africa/Khartoum',                flag:'🇸🇩'},
+  {name:'Lagos',         country:'Nigeria',        tz:'Africa/Lagos',                   flag:'🇳🇬'},
+  {name:'Abuja',         country:'Nigeria',        tz:'Africa/Lagos',                   flag:'🇳🇬'},
+  {name:'Accra',         country:'Ghana',          tz:'Africa/Accra',                   flag:'🇬🇭'},
+  {name:'Dakar',         country:'Senegal',        tz:'Africa/Dakar',                   flag:'🇸🇳'},
+  {name:'Abidjan',       country:"Côte d'Ivoire",  tz:'Africa/Abidjan',                 flag:'🇨🇮'},
+  {name:'Bamako',        country:'Mali',           tz:'Africa/Bamako',                  flag:'🇲🇱'},
+  {name:'Yaoundé',       country:'Cameroon',       tz:'Africa/Douala',                  flag:'🇨🇲'},
+  {name:'Kinshasa',      country:'DR Congo',       tz:'Africa/Kinshasa',                flag:'🇨🇩'},
+  {name:'Luanda',        country:'Angola',         tz:'Africa/Luanda',                  flag:'🇦🇴'},
+  {name:'Nairobi',       country:'Kenya',          tz:'Africa/Nairobi',                 flag:'🇰🇪'},
+  {name:'Addis Ababa',   country:'Ethiopia',       tz:'Africa/Addis_Ababa',             flag:'🇪🇹'},
+  {name:'Dar es Salaam', country:'Tanzania',       tz:'Africa/Dar_es_Salaam',           flag:'🇹🇿'},
+  {name:'Kampala',       country:'Uganda',         tz:'Africa/Kampala',                 flag:'🇺🇬'},
+  {name:'Kigali',        country:'Rwanda',         tz:'Africa/Kigali',                  flag:'🇷🇼'},
+  {name:'Johannesburg',  country:'South Africa',   tz:'Africa/Johannesburg',            flag:'🇿🇦'},
+  {name:'Cape Town',     country:'South Africa',   tz:'Africa/Johannesburg',            flag:'🇿🇦'},
+  {name:'Durban',        country:'South Africa',   tz:'Africa/Johannesburg',            flag:'🇿🇦'},
+  {name:'Harare',        country:'Zimbabwe',       tz:'Africa/Harare',                  flag:'🇿🇼'},
+  {name:'Lusaka',        country:'Zambia',         tz:'Africa/Lusaka',                  flag:'🇿🇲'},
+  {name:'Maputo',        country:'Mozambique',     tz:'Africa/Maputo',                  flag:'🇲🇿'},
+  {name:'Windhoek',      country:'Namibia',        tz:'Africa/Windhoek',                flag:'🇳🇦'},
+  {name:'Gaborone',      country:'Botswana',       tz:'Africa/Gaborone',                flag:'🇧🇼'},
+  {name:'Antananarivo',  country:'Madagascar',     tz:'Indian/Antananarivo',            flag:'🇲🇬'},
+  {name:'Port Louis',    country:'Mauritius',      tz:'Indian/Mauritius',               flag:'🇲🇺'},
+
+  // ─── Central & South Asia ────────────────────────────
   {name:'Kabul',         country:'Afghanistan',    tz:'Asia/Kabul',                     flag:'🇦🇫'},
+  {name:'Karachi',       country:'Pakistan',       tz:'Asia/Karachi',                   flag:'🇵🇰'},
+  {name:'Lahore',        country:'Pakistan',       tz:'Asia/Karachi',                   flag:'🇵🇰'},
+  {name:'Islamabad',     country:'Pakistan',       tz:'Asia/Karachi',                   flag:'🇵🇰'},
   {name:'Mumbai',        country:'India',          tz:'Asia/Kolkata',                   flag:'🇮🇳'},
   {name:'Delhi',         country:'India',          tz:'Asia/Kolkata',                   flag:'🇮🇳'},
   {name:'Bangalore',     country:'India',          tz:'Asia/Kolkata',                   flag:'🇮🇳'},
+  {name:'Kolkata',       country:'India',          tz:'Asia/Kolkata',                   flag:'🇮🇳'},
+  {name:'Chennai',       country:'India',          tz:'Asia/Kolkata',                   flag:'🇮🇳'},
+  {name:'Hyderabad',     country:'India',          tz:'Asia/Kolkata',                   flag:'🇮🇳'},
+  {name:'Dhaka',         country:'Bangladesh',     tz:'Asia/Dhaka',                     flag:'🇧🇩'},
+  {name:'Chittagong',    country:'Bangladesh',     tz:'Asia/Dhaka',                     flag:'🇧🇩'},
   {name:'Colombo',       country:'Sri Lanka',      tz:'Asia/Colombo',                   flag:'🇱🇰'},
   {name:'Kathmandu',     country:'Nepal',          tz:'Asia/Kathmandu',                 flag:'🇳🇵'},
+  {name:'Thimphu',       country:'Bhutan',         tz:'Asia/Thimphu',                   flag:'🇧🇹'},
+  {name:'Malé',          country:'Maldives',       tz:'Indian/Maldives',                flag:'🇲🇻'},
+  {name:'Tashkent',      country:'Uzbekistan',     tz:'Asia/Tashkent',                  flag:'🇺🇿'},
+  {name:'Almaty',        country:'Kazakhstan',     tz:'Asia/Almaty',                    flag:'🇰🇿'},
+  {name:'Astana',        country:'Kazakhstan',     tz:'Asia/Almaty',                    flag:'🇰🇿'},
+  {name:'Bishkek',       country:'Kyrgyzstan',     tz:'Asia/Bishkek',                   flag:'🇰🇬'},
+  {name:'Dushanbe',      country:'Tajikistan',     tz:'Asia/Dushanbe',                  flag:'🇹🇯'},
+  {name:'Ashgabat',      country:'Turkmenistan',   tz:'Asia/Ashgabat',                  flag:'🇹🇲'},
+  {name:'Baku',          country:'Azerbaijan',     tz:'Asia/Baku',                      flag:'🇦🇿'},
+  {name:'Tbilisi',       country:'Georgia',        tz:'Asia/Tbilisi',                   flag:'🇬🇪'},
+  {name:'Yerevan',       country:'Armenia',        tz:'Asia/Yerevan',                   flag:'🇦🇲'},
+
+  // ─── East & Southeast Asia ───────────────────────────
   {name:'Yangon',        country:'Myanmar',        tz:'Asia/Yangon',                    flag:'🇲🇲'},
   {name:'Bangkok',       country:'Thailand',       tz:'Asia/Bangkok',                   flag:'🇹🇭'},
+  {name:'Hanoi',         country:'Vietnam',        tz:'Asia/Ho_Chi_Minh',               flag:'🇻🇳'},
   {name:'Ho Chi Minh',   country:'Vietnam',        tz:'Asia/Ho_Chi_Minh',               flag:'🇻🇳'},
+  {name:'Phnom Penh',    country:'Cambodia',       tz:'Asia/Phnom_Penh',                flag:'🇰🇭'},
+  {name:'Vientiane',     country:'Laos',           tz:'Asia/Vientiane',                 flag:'🇱🇦'},
   {name:'Jakarta',       country:'Indonesia',      tz:'Asia/Jakarta',                   flag:'🇮🇩'},
+  {name:'Surabaya',      country:'Indonesia',      tz:'Asia/Jakarta',                   flag:'🇮🇩'},
+  {name:'Denpasar',      country:'Indonesia',      tz:'Asia/Makassar',                  flag:'🇮🇩'},
   {name:'Kuala Lumpur',  country:'Malaysia',       tz:'Asia/Kuala_Lumpur',              flag:'🇲🇾'},
   {name:'Singapore',     country:'Singapore',      tz:'Asia/Singapore',                 flag:'🇸🇬'},
+  {name:'Bandar Seri Begawan',country:'Brunei',    tz:'Asia/Brunei',                    flag:'🇧🇳'},
   {name:'Manila',        country:'Philippines',    tz:'Asia/Manila',                    flag:'🇵🇭'},
-  {name:'Taipei',        country:'Taiwan',         tz:'Asia/Taipei',                    flag:'🇹🇼'},
+  {name:'Cebu',          country:'Philippines',    tz:'Asia/Manila',                    flag:'🇵🇭'},
+  {name:'Dili',          country:'Timor-Leste',    tz:'Asia/Dili',                      flag:'🇹🇱'},
   {name:'Shanghai',      country:'China',          tz:'Asia/Shanghai',                  flag:'🇨🇳'},
+  {name:'Beijing',       country:'China',          tz:'Asia/Shanghai',                  flag:'🇨🇳'},
+  {name:'Guangzhou',     country:'China',          tz:'Asia/Shanghai',                  flag:'🇨🇳'},
+  {name:'Shenzhen',      country:'China',          tz:'Asia/Shanghai',                  flag:'🇨🇳'},
+  {name:'Chengdu',       country:'China',          tz:'Asia/Shanghai',                  flag:'🇨🇳'},
   {name:'Hong Kong',     country:'Hong Kong',      tz:'Asia/Hong_Kong',                 flag:'🇭🇰'},
+  {name:'Macau',         country:'Macau',          tz:'Asia/Macau',                     flag:'🇲🇴'},
+  {name:'Taipei',        country:'Taiwan',         tz:'Asia/Taipei',                    flag:'🇹🇼'},
   {name:'Seoul',         country:'South Korea',    tz:'Asia/Seoul',                     flag:'🇰🇷'},
+  {name:'Busan',         country:'South Korea',    tz:'Asia/Seoul',                     flag:'🇰🇷'},
+  {name:'Pyongyang',     country:'North Korea',    tz:'Asia/Pyongyang',                 flag:'🇰🇵'},
   {name:'Tokyo',         country:'Japan',          tz:'Asia/Tokyo',                     flag:'🇯🇵'},
-  {name:'Almaty',        country:'Kazakhstan',     tz:'Asia/Almaty',                    flag:'🇰🇿'},
+  {name:'Osaka',         country:'Japan',          tz:'Asia/Tokyo',                     flag:'🇯🇵'},
+  {name:'Ulaanbaatar',   country:'Mongolia',       tz:'Asia/Ulaanbaatar',               flag:'🇲🇳'},
+
+  // ─── Oceania ─────────────────────────────────────────
   {name:'Sydney',        country:'Australia',      tz:'Australia/Sydney',               flag:'🇦🇺'},
+  {name:'Canberra',      country:'Australia',      tz:'Australia/Sydney',               flag:'🇦🇺'},
   {name:'Melbourne',     country:'Australia',      tz:'Australia/Melbourne',            flag:'🇦🇺'},
   {name:'Brisbane',      country:'Australia',      tz:'Australia/Brisbane',             flag:'🇦🇺'},
+  {name:'Adelaide',      country:'Australia',      tz:'Australia/Adelaide',             flag:'🇦🇺'},
   {name:'Perth',         country:'Australia',      tz:'Australia/Perth',                flag:'🇦🇺'},
+  {name:'Darwin',        country:'Australia',      tz:'Australia/Darwin',               flag:'🇦🇺'},
+  {name:'Hobart',        country:'Australia',      tz:'Australia/Hobart',               flag:'🇦🇺'},
   {name:'Auckland',      country:'New Zealand',    tz:'Pacific/Auckland',               flag:'🇳🇿'},
-  {name:'Mexico City',   country:'Mexico',         tz:'America/Mexico_City',            flag:'🇲🇽'},
-  {name:'São Paulo',     country:'Brazil',         tz:'America/Sao_Paulo',              flag:'🇧🇷'},
-  {name:'Buenos Aires',  country:'Argentina',      tz:'America/Argentina/Buenos_Aires', flag:'🇦🇷'},
-  {name:'Bogotá',        country:'Colombia',       tz:'America/Bogota',                 flag:'🇨🇴'},
-  {name:'Lima',          country:'Peru',           tz:'America/Lima',                   flag:'🇵🇪'},
-  {name:'Santiago',      country:'Chile',          tz:'America/Santiago',               flag:'🇨🇱'},
-  {name:'Cairo',         country:'Egypt',          tz:'Africa/Cairo',                   flag:'🇪🇬'},
-  {name:'Johannesburg',  country:'South Africa',   tz:'Africa/Johannesburg',            flag:'🇿🇦'},
-  {name:'Lagos',         country:'Nigeria',        tz:'Africa/Lagos',                   flag:'🇳🇬'},
-  {name:'Nairobi',       country:'Kenya',          tz:'Africa/Nairobi',                 flag:'🇰🇪'},
-  {name:'Accra',         country:'Ghana',          tz:'Africa/Accra',                   flag:'🇬🇭'},
+  {name:'Wellington',    country:'New Zealand',    tz:'Pacific/Auckland',               flag:'🇳🇿'},
+  {name:'Suva',          country:'Fiji',           tz:'Pacific/Fiji',                   flag:'🇫🇯'},
+  {name:'Port Moresby',  country:'Papua New Guinea',tz:'Pacific/Port_Moresby',          flag:'🇵🇬'},
+  {name:'Nouméa',        country:'New Caledonia',  tz:'Pacific/Noumea',                 flag:'🇳🇨'},
+  {name:'Papeete',       country:'French Polynesia',tz:'Pacific/Tahiti',                flag:'🇵🇫'},
+  {name:'Hagåtña',       country:'Guam',           tz:'Pacific/Guam',                   flag:'🇬🇺'},
+  {name:'Apia',          country:'Samoa',          tz:'Pacific/Apia',                   flag:'🇼🇸'},
+  {name:"Nuku'alofa",    country:'Tonga',          tz:'Pacific/Tongatapu',              flag:'🇹🇴'},
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -332,6 +518,13 @@ function tick() {
 
   if (currentTab === 'time') {
     const ref = getRefDate();
+    // Keep the big "Your Local Time" clock ticking (it lives outside the city loop).
+    const localDate = isCustomMode() ? ref : now;
+    const llp   = getTimeParts(localDate, localTz);
+    const ltEl  = document.getElementById('local-time');
+    const ldEl  = document.getElementById('local-date');
+    if (ltEl) ltEl.textContent = buildTimeStr(llp, S.settings);
+    if (ldEl) ldEl.textContent = llp.dateStr;
     S.cities.forEach((city, i) => {
       const tp       = getTimeParts(ref, city.tz);
       const timeEl   = document.getElementById(`ct-${i}`);
@@ -461,18 +654,7 @@ function renderTimeTab() {
   const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const lp      = getTimeParts(isCustomMode() ? ref : now, localTz);
 
-  const pad      = n => String(n).padStart(2, '0');
-  const timeVal  = `${pad(ref.getHours())}:${pad(ref.getMinutes())}`;
-  const dateVal  = `${ref.getFullYear()}-${pad(ref.getMonth()+1)}-${pad(ref.getDate())}`;
   const custom   = isCustomMode();
-  const customCard = `
-    <div class="custom-time-card">
-      <span class="ctc-label">&#128336; Compare at a custom time
-        ${custom ? '<span class="ctc-badge">CUSTOM</span>' : ''}</span>
-      <input type="date" id="custom-date" value="${dateVal}" aria-label="Custom date">
-      <input type="time" id="custom-time" value="${timeVal}" aria-label="Custom time">
-      ${custom ? '<button class="ctc-live" data-action="slider-live">&#8635; Back to live</button>' : ''}
-    </div>`;
 
   let citiesHtml = '';
   if (S.cities.length === 0) {
@@ -515,11 +697,10 @@ function renderTimeTab() {
   document.getElementById('tab-time').innerHTML = `
     <div class="local-block">
       <div class="local-label">Your Local Time${custom ? ' &middot; Custom' : ''}</div>
-      <div class="local-time">${buildTimeStr(lp, S.settings)}</div>
-      <div class="local-date">${lp.dateStr}</div>
+      <div class="local-time" id="local-time">${buildTimeStr(lp, S.settings)}</div>
+      <div class="local-date" id="local-date">${lp.dateStr}</div>
       <div class="local-tz">${lp.abbr} &middot; ${lp.gmtOffset}</div>
     </div>
-    ${customCard}
     <div class="section-hd">
       <span class="section-title">Time Zones</span>
       <button class="add-btn" data-action="add-city">+ Add City</button>
@@ -549,19 +730,7 @@ function onTimeInput(e) {
   }
 }
 function onTimeChange(e) {
-  if (e.target.id === 'custom-time') {
-    const v = e.target.value;            // "HH:MM"
-    if (v) {
-      const [h, m] = v.split(':').map(Number);
-      if (!isNaN(h) && !isNaN(m)) { sliderMins = h * 60 + m; renderTimeTab(); }
-    }
-    return;
-  }
-  if (e.target.id === 'custom-date') {
-    customDate = e.target.value || null;
-    renderTimeTab();
-    return;
-  }
+  // Per-city sliders are handled in onTimeInput; nothing to do on change.
 }
 
 // ─── Add City Modal ──────────────────────────────────
@@ -1400,7 +1569,7 @@ function renderSettingsTab() {
         </button>
       </div>
       <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-        <div class="setting-label">ValuTime v1.5.0</div>
+        <div class="setting-label">ValuTime v1.6.0</div>
         <div class="setting-desc">Rates: open.er-api.com &middot; Fees are estimates &mdash; always verify before sending.</div>
         <button class="add-btn" data-action="refresh-rates" style="margin-top:6px">&#8635; Refresh Rates</button>
       </div>
