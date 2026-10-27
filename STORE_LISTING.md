@@ -46,7 +46,7 @@ Built by a working freelancer, for freelancers.
 **💱 Currency conversion that shows what you'll really receive**
 This is the part generic converters miss. ValuTime uses live exchange rates *and* estimates the platform fees freelancers actually pay — so you see your true take-home, not just the mid-market number.
 - Convert any amount across 50+ currencies with up-to-date rates.
-- Toggle payout providers — Wise, Payoneer, PayPal, Remitly, Western Union, Skrill, Revolut — to compare net amounts side by side.
+- Switch on the payout services you use and compare your net amount side by side.
 - Fine-tune each provider's fee percentage in Settings to match your real rates.
 - Quote and invoice with confidence, knowing exactly what lands in your account.
 
@@ -85,9 +85,9 @@ Run your freelance day from one tab. Install ValuTime and get back to the work t
 
 ---
 
-## 5. Search keywords / tags
+## 5. Keywords: do NOT paste anywhere
 
-freelancer tools, world clock, time zone converter, meeting planner, best time to meet, client time zones, currency converter, exchange rates, Wise fees, PayPal fees, Payoneer, invoice calculator, payout calculator, to-do list, task manager, pomodoro, focus timer, site blocker, productivity, ADHD, accessibility
+The Chrome Web Store has no keyword field. Lists of keywords or brand names anywhere in the listing count as "keyword spam" and get the item rejected (v1.7.0 was rejected for listing the payout services by name). Let the description above do the work, and don't add lists of names.
 
 ---
 
