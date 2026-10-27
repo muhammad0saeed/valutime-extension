@@ -1,15 +1,14 @@
 {
   "manifest_version": 3,
   "name": "ValuTime",
-  "version": "1.6.0",
-  "description": "Time zones, currency with pro fees, To-Do, Pomodoro focus & site blocking \u2014 built for freelancers.",
+  "version": "1.7.0",
+  "description": "Client time zones with live status & a meeting planner, currency with real payout fees, To-Do and Pomodoro for freelancers.",
   "permissions": [
     "storage",
     "alarms",
     "notifications",
     "offscreen",
-    "declarativeNetRequest",
-    "tabs"
+    "declarativeNetRequest"
   ],
   "action": {
     "default_popup": "popup.html",

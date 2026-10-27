@@ -1,4 +1,4 @@
-// background.js — FreelancerHub service worker
+// background.js — ValuTime service worker
 
 // ─── Alarm handler ────────────────────────────────────
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -37,6 +37,8 @@ async function handlePomoEnd() {
   const ps   = pomo.settings || {};
   const sessionsBeforeLong = ps.sessionsBeforeLong || 4;
   const phase = pomo.phase || 'idle';
+  // A leftover alarm after pause/reset must not restart the timer
+  if (!['work', 'break', 'longBreak'].includes(phase)) return;
 
   let nextPhase, nextMins, title, msg;
 
@@ -92,6 +94,11 @@ async function handlePomoEnd() {
 // ─── Audio ───────────────────────────────────────────
 async function playAlarmSound() {
   try {
+    // Respect the sound picked in Settings ("Silent" = no sound at all)
+    const { settings } = await chrome.storage.local.get(['settings']);
+    const sound = (settings && settings.pomoSound) || 'bell';
+    if (sound === 'none') return;
+
     const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
     if (contexts.length === 0) {
       await chrome.offscreen.createDocument({
@@ -100,7 +107,7 @@ async function playAlarmSound() {
         justification: 'Alarm chime',
       });
     }
-    chrome.runtime.sendMessage({ type: 'PLAY_ALARM' });
+    chrome.runtime.sendMessage({ type: 'PLAY_ALARM', sound }).catch(() => {});
     setTimeout(async () => {
       try {
         const ctxs = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });

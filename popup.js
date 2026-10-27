@@ -1,5 +1,5 @@
 'use strict';
-// ValuTime v1.6.0
+// ValuTime v1.7.0
 
 // ═══════════════════════════════════════════════════════
 //  CITIES DATABASE
@@ -368,7 +368,10 @@ const DEFAULT_SETTINGS = {
   feeProviders: FEE_PROVIDERS.map(p => ({id:p.id, pct:p.defaultPct, enabled:false})),
   theme:'ocean', displayMode:'auto', fontSize:'normal', layout:'default',
   highContrast:false, reduceMotion:false, pomoSound:'bell',
+  workStart:9, workEnd:18,   // working hours (local to each city) used by status badges + meeting planner
+  showPlanner:true,
 };
+const SUPPORT_URL = 'https://www.supportkori.com/thecreade';
 const DEFAULT_POMO = {
   phase:'idle',          // idle | work | break | longBreak | paused
   endTime:null,
@@ -391,8 +394,7 @@ let S = {
 let currentTab  = 'time';
 let clockInterval = null;
 let pomoInterval  = null;
-let sliderMins    = null;
-let customDate    = null;   // 'YYYY-MM-DD' when a custom calendar date is set
+let refTime       = null;   // ms timestamp being previewed with a city slider; null = live
 let todoFilter    = 'all';
 
 // ═══════════════════════════════════════════════════════
@@ -474,29 +476,54 @@ function buildTimeStr(parts, settings) {
   return settings.showSeconds ? `${m[1]}${m[2]||''} ${m[3]}` : `${m[1]} ${m[3]}`;
 }
 
-// Reference date (for slider)
-function getRefDate() {
-  if (sliderMins === null && !customDate) return new Date();
-  const now = new Date();
-  let y = now.getFullYear(), mo = now.getMonth(), d = now.getDate();
-  if (customDate) {
-    const p = customDate.split('-');
-    y = +p[0]; mo = +p[1] - 1; d = +p[2];
+// "GMT+0 · GMT+0" reads badly, so only show the abbreviation when it's a real name (EST, CET…)
+function tzLabel(tp) {
+  return tp.abbr && !tp.abbr.startsWith('GMT') ? `${tp.abbr} &middot; ${tp.gmtOffset}` : tp.gmtOffset;
+}
+
+// Calendar/clock fields of `date` as seen in timezone `tz` (formatters cached: the planner calls this hundreds of times)
+const zonedFmtCache = new Map();
+function zonedParts(date, tz) {
+  let fmt = zonedFmtCache.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hourCycle: 'h23', weekday: 'short',
+      year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric',
+    });
+    zonedFmtCache.set(tz, fmt);
   }
-  const mins = sliderMins === null ? localMinsNow() : sliderMins;
-  return new Date(y, mo, d, Math.floor(mins/60), mins%60, 0, 0);
+  const p = {};
+  fmt.formatToParts(date).forEach(x => { p[x.type] = x.value; });
+  return { y: +p.year, mo: +p.month, d: +p.day, h: +p.hour % 24, mi: +p.minute, wd: p.weekday };
 }
-function isCustomMode() { return sliderMins !== null || customDate !== null; }
-function localMinsNow() {
-  const now = new Date();
-  return now.getHours()*60 + now.getMinutes();
+// Minutes the timezone is ahead of UTC at that instant (handles DST)
+function tzOffsetMins(tz, date) {
+  const p = zonedParts(date, tz);
+  const asUtc = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi);
+  return Math.round((asUtc - Math.floor(date.getTime() / 60000) * 60000) / 60000);
 }
-function minsToLabel(m) {
-  const h  = Math.floor(m/60) % 24;
-  const mm = m % 60;
-  const ampm = h>=12 ? 'PM':'AM';
-  const h12  = h===0?12:h>12?h-12:h;
-  return `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+// Minutes since midnight on the clock in `tz`
+function getCityMins(date, tz) {
+  const p = zonedParts(date, tz);
+  return p.h * 60 + p.mi;
+}
+
+// Reference date: the previewed time from a city slider, or now
+function getRefDate() { return refTime === null ? new Date() : new Date(refTime); }
+function isCustomMode() { return refTime !== null; }
+
+// Working / off-hours / asleep status of a city at `date`
+function getCityStatus(date, tz) {
+  const p = zonedParts(date, tz);
+  const mins = p.h * 60 + p.mi;
+  const s = S.settings;
+  const weekend = p.wd === 'Sat' || p.wd === 'Sun';
+  const night   = mins < 7 * 60 || mins >= 22 * 60;
+  if (!weekend && mins >= s.workStart * 60 && mins < s.workEnd * 60)
+                return { cls: 'working', icon: '🟢', text: 'Working' };
+  if (night)    return { cls: 'asleep',  icon: '🌙', text: 'Asleep' };
+  if (weekend)  return { cls: 'weekend', icon: '🏖️', text: 'Weekend' };
+  return { cls: 'off', icon: '🟡', text: mins < s.workStart * 60 ? 'Early' : 'Evening' };
 }
 
 // ═══════════════════════════════════════════════════════
@@ -525,23 +552,29 @@ function tick() {
     const ldEl  = document.getElementById('local-date');
     if (ltEl) ltEl.textContent = buildTimeStr(llp, S.settings);
     if (ldEl) ldEl.textContent = llp.dateStr;
-    S.cities.forEach((city, i) => {
-      const tp       = getTimeParts(ref, city.tz);
-      const timeEl   = document.getElementById(`ct-${i}`);
-      const dateEl   = document.getElementById(`cd-${i}`);
-      const sliderEl = document.getElementById(`cs-${i}`);
-      if (timeEl) timeEl.textContent = buildTimeStr(tp, S.settings);
-      if (dateEl) dateEl.textContent = tp.dateStr;
-      // Sync slider only in live mode (don't fight user dragging)
-      if (sliderEl && sliderMins === null) {
-        const arr = new Intl.DateTimeFormat('en-US', {
-          timeZone: city.tz, hour: 'numeric', minute: 'numeric', hour12: false
-        }).formatToParts(ref);
-        const cp = {}; arr.forEach(x => { cp[x.type] = parseInt(x.value) || 0; });
-        sliderEl.value = (cp.hour === 24 ? 0 : cp.hour) * 60 + cp.minute;
-      }
-    });
+    // Sync sliders only in live mode (don't fight the user dragging)
+    updateCityCards(ref, !isCustomMode());
+    updatePlannerMarker();
   }
+}
+
+// Refresh every city card's time, date, status badge and (optionally) slider position
+function updateCityCards(ref, syncSliders) {
+  S.cities.forEach((city, i) => {
+    const tp = getTimeParts(ref, city.tz);
+    const timeEl = document.getElementById(`ct-${i}`);
+    const dateEl = document.getElementById(`cd-${i}`);
+    const stEl   = document.getElementById(`cst-${i}`);
+    if (timeEl) timeEl.textContent = buildTimeStr(tp, S.settings);
+    if (dateEl) dateEl.textContent = tp.dateStr;
+    if (stEl) {
+      const st = getCityStatus(ref, city.tz);
+      stEl.className = `city-status ${st.cls}`;
+      stEl.textContent = `${st.icon} ${st.text}`;
+    }
+    const sliderEl = document.getElementById(`cs-${i}`);
+    if (sliderEl && syncSliders) sliderEl.value = getCityMins(ref, city.tz);
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -570,7 +603,7 @@ function setupTabs() {
   document.getElementById('tab-pomo').addEventListener('change',    onPomoChange);
   document.getElementById('tab-pomo').addEventListener('input',     onPomoInput);
   document.getElementById('tab-todo').addEventListener('click',     onTodoClick);
-  document.getElementById('tab-todo').addEventListener('input',     onTodoInput);
+  document.getElementById('tab-todo').addEventListener('keydown',   onTodoKeydown);
   document.getElementById('tab-settings').addEventListener('click', onSettingsClick);
   document.getElementById('tab-settings').addEventListener('change',onSettingsChange);
   document.getElementById('tab-settings').addEventListener('input', onSettingsInput);
@@ -594,98 +627,179 @@ function renderCurrentTab() {
 //  TIME TAB
 // ═══════════════════════════════════════════════════════
 
+const LOCAL_TZ = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// "6:30 PM" / "18:30" for minutes since midnight, following the 12h/24h setting
+function fmtMins(m) {
+  const h = Math.floor(m / 60) % 24, mm = String(m % 60).padStart(2, '0');
+  if (S.settings.clockFormat === '24h') return `${String(h).padStart(2, '0')}:${mm}`;
+  return `${h % 12 || 12}:${mm} ${h < 12 ? 'AM' : 'PM'}`;
+}
+// "9 AM" / "09:00" for whole hours (0–24)
+function fmtHour(h) { return fmtMins((h % 24) * 60).replace(':00 ', ' '); }
+
 // ─── City slider helpers ──────────────────────────────
-function cityTimeToRefDate(tz, cityMins) {
-  const h   = Math.floor(cityMins / 60) % 24;
-  const m   = cityMins % 60;
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric', hour12: false,
-  }).formatToParts(now);
-  const p = {}; parts.forEach(x => { p[x.type] = x.value; });
-  const tzH   = parseInt(p.hour) === 24 ? 0 : parseInt(p.hour);
-  const tzMin  = parseInt(p.minute);
-  const midnight = Date.UTC(parseInt(p.year), parseInt(p.month) - 1, parseInt(p.day), 0, 0, 0);
-  const offMins  = (tzH * 60 + tzMin) - (now.getUTCHours() * 60 + now.getUTCMinutes());
-  return new Date(midnight + (h * 60 + m - offMins) * 60000);
+// The instant when the clock in `tz` shows `cityMins`, on the calendar day it shows at `base`
+function cityTimeToRefDate(tz, cityMins, base = new Date()) {
+  const p = zonedParts(base, tz);
+  const wall = Date.UTC(p.y, p.mo - 1, p.d, Math.floor(cityMins / 60), cityMins % 60);
+  const off = t => tzOffsetMins(tz, new Date(t)) * 60000;
+  // Candidates: two-pass estimate, plus the offsets in force half a day either side (covers DST changes)
+  const est = wall - off(wall);
+  const cands = [wall - off(est), wall - off(wall - 43200000), wall - off(wall + 43200000)];
+  const sameDay = q => q.y === p.y && q.mo === p.mo && q.d === p.d;
+  const exact = cands.find(t => { const q = zonedParts(new Date(t), tz); return sameDay(q) && q.h * 60 + q.mi === cityMins; });
+  if (exact !== undefined) return new Date(exact);
+  // The wall time was skipped by a DST jump (e.g. 00:00 → 01:00): land just after the jump, same day
+  const later = cands.filter(t => sameDay(zonedParts(new Date(t), tz))).sort((a, b) => b - a)[0];
+  return new Date(later ?? cands[0]);
 }
 
 function handleCitySlider(cityIndex, cityMins) {
-  const city    = S.cities[cityIndex];
+  const city = S.cities[cityIndex];
   if (!city) return;
-  const refDate = cityTimeToRefDate(city.tz, cityMins);
-  sliderMins    = refDate.getHours() * 60 + refDate.getMinutes();
+  refTime = cityTimeToRefDate(city.tz, cityMins, getRefDate()).getTime();
+  tick();
+  updateCityCards(getRefDate(), true);
+  renderLiveHint();
+}
 
-  // Update all city cards
-  S.cities.forEach((c, i) => {
-    const tp = getTimeParts(refDate, c.tz);
-    const tEl = document.getElementById(`ct-${i}`);
-    const dEl = document.getElementById(`cd-${i}`);
-    const sEl = document.getElementById(`cs-${i}`);
-    if (tEl) tEl.textContent = buildTimeStr(tp, S.settings);
-    if (dEl) dEl.textContent = tp.dateStr;
-    if (sEl) {
-      const arr = new Intl.DateTimeFormat('en-US', {
-        timeZone: c.tz, hour: 'numeric', minute: 'numeric', hour12: false,
-      }).formatToParts(refDate);
-      const cp = {}; arr.forEach(x => { cp[x.type] = parseInt(x.value) || 0; });
-      sEl.value = (cp.hour === 24 ? 0 : cp.hour) * 60 + cp.minute;
-    }
-  });
+// Banner shown while previewing another time
+function liveHintHtml() {
+  if (!isCustomMode()) return '';
+  const tp = getTimeParts(getRefDate(), LOCAL_TZ());
+  const t  = buildTimeStr(tp, { ...S.settings, showSeconds: false });
+  return `<div class="live-hint">&#128336; Previewing ${tp.dateStr}, ${t} your time
+    <button class="live-btn" data-action="slider-live">&#8635; Back to live</button></div>`;
+}
+function renderLiveHint() {
+  const slot = document.getElementById('live-hint-slot');
+  if (slot) slot.innerHTML = liveHintHtml();
+  const lbl = document.getElementById('local-label');
+  if (lbl) lbl.innerHTML = `Your Local Time${isCustomMode() ? ' &middot; Preview' : ''}`;
+}
 
-  // Show / update live hint
-  let hint = document.querySelector('.live-hint');
-  if (!hint) {
-    hint = document.createElement('div');
-    hint.className = 'live-hint';
-    const sectionHd = document.querySelector('#tab-time .section-hd');
-    if (sectionHd) sectionHd.parentNode.insertBefore(hint, sectionHd);
+// ─── Meeting planner ──────────────────────────────────
+// 48 half-hour slots across *your* day; for each city, is it inside working hours?
+const PLANNER_SLOTS = 48;
+function plannerStartMs() { return cityTimeToRefDate(LOCAL_TZ(), 0).getTime(); }   // your local midnight today
+function plannerData() {
+  const start = plannerStartMs();
+  const { workStart, workEnd } = S.settings;
+  const inHours = (tz, slot) => {
+    const m = getCityMins(new Date(start + slot * 1800000 + 900000), tz);   // middle of the slot
+    return m >= workStart * 60 && m < workEnd * 60;
+  };
+  const localTz = LOCAL_TZ();
+  const you = S.cities.find(c => c.isLocal);
+  const rows = [{ label: 'You', flag: you?.flag || '📍', tz: localTz, you: true }]
+    .concat(S.cities.filter(c => !c.isLocal).map(c => ({ label: c.label || c.name, flag: c.flag, tz: c.tz })));
+  rows.forEach(r => { r.slots = Array.from({ length: PLANNER_SLOTS }, (_, i) => inHours(r.tz, i)); });
+  const clients = rows.filter(r => !r.you);
+  const counts  = Array.from({ length: PLANNER_SLOTS }, (_, i) => clients.filter(r => r.slots[i]).length);
+  const best    = Math.max(0, ...counts);
+  return { rows, clients, counts, best };
+}
+// Turn the best slots into "6:00 PM – 8:00 PM" ranges
+function plannerRanges(counts, best) {
+  const out = [];
+  for (let i = 0; i < counts.length; i++) {
+    if (counts[i] !== best || best === 0) continue;
+    let j = i; while (j + 1 < counts.length && counts[j + 1] === best) j++;
+    out.push(`${fmtMins(i * 30)} – ${fmtMins(((j + 1) * 30) % 1440)}`);
+    i = j;
   }
-  if (hint) {
-    hint.innerHTML = `&#128336; ${minsToLabel(sliderMins)} local &nbsp;
-      <button class="live-btn" data-action="slider-live">&#8635; Live</button>`;
+  return out;
+}
+function plannerHtml() {
+  const s = S.settings;
+  const open = s.showPlanner !== false;
+  const hd = `<button class="planner-hd" data-action="toggle-planner" aria-expanded="${open}">
+      <span class="section-title">&#129309; Best time to meet</span>
+      <span class="planner-hours">${fmtHour(s.workStart)}–${fmtHour(s.workEnd)} · weekdays</span>
+      <span class="planner-chev" aria-hidden="true">${open ? '&#9662;' : '&#9656;'}</span>
+    </button>`;
+  if (!open) return `<div class="card planner">${hd}</div>`;
+
+  const { rows, clients, counts, best } = plannerData();
+  let summary;
+  if (!clients.length) {
+    summary = `<div class="planner-summary muted">Add a client's city to see when you can meet.</div>`;
+  } else {
+    const ranges = plannerRanges(counts, best).join(', ');
+    summary = best === clients.length
+      ? `<div class="planner-summary good">&#9989; ${clients.length > 1 ? 'All clients' : esc(clients[0].label)} working: <b>${ranges}</b> your time</div>`
+      : best === 0
+        ? `<div class="planner-summary warn">&#9888;&#65039; No overlap with working hours today.</div>`
+        : `<div class="planner-summary warn">&#9888;&#65039; No time when all ${clients.length} are working. Best (${best} of ${clients.length}): <b>${ranges}</b></div>`;
   }
+  const rowsHtml = rows.map(r => `
+    <div class="planner-row${r.you ? ' you' : ''}">
+      <span class="planner-lbl" title="${esc(r.label)}">${r.flag || ''} ${esc(r.label)}</span>
+      <div class="planner-bar">${r.slots.map((on, i) =>
+        `<span class="pc${on ? ' on' : ''}${clients.length && counts[i] === best && best > 0 ? ' best' : ''}" data-action="planner-pick" data-slot="${i}" title="${fmtMins(i * 30)}"></span>`).join('')}
+      </div>
+    </div>`).join('');
+  return `<div class="card planner">${hd}
+    ${summary}
+    <div class="planner-grid">
+      ${rowsHtml}
+      <div class="planner-row axis"><span class="planner-lbl"></span>
+        <div class="planner-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
+      </div>
+      <div class="planner-now" id="planner-now" aria-hidden="true"></div>
+    </div>
+    <div class="planner-tip">Bars are in your time. Tap a bar to preview that time.</div>
+  </div>`;
+}
+// Vertical line showing the current (or previewed) time on the planner
+function updatePlannerMarker() {
+  const el = document.getElementById('planner-now');
+  const bar = document.querySelector('.planner-bar');
+  if (!el || !bar) return;
+  const frac = (getRefDate().getTime() - plannerStartMs()) / 86400000;
+  if (frac < 0 || frac >= 1) { el.style.display = 'none'; return; }
+  const grid = el.parentElement.getBoundingClientRect(), b = bar.getBoundingClientRect();
+  el.style.display = '';
+  el.style.left = `${b.left - grid.left + frac * b.width}px`;
 }
 
 function renderTimeTab() {
-  const now     = new Date();
   const ref     = getRefDate();
-  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const lp      = getTimeParts(isCustomMode() ? ref : now, localTz);
-
-  const custom   = isCustomMode();
+  const lp      = getTimeParts(ref, LOCAL_TZ());
 
   let citiesHtml = '';
   if (S.cities.length === 0) {
     citiesHtml = `<div class="no-items"><div class="no-items-icon">&#127757;</div><div>No cities added yet.</div></div>`;
   } else {
     S.cities.forEach((city, i) => {
-      const tp    = getTimeParts(ref, city.tz);
-      const cpArr = new Intl.DateTimeFormat('en-US', {
-        timeZone: city.tz, hour: 'numeric', minute: 'numeric', hour12: false
-      }).formatToParts(ref);
-      const cp = {}; cpArr.forEach(x => { cp[x.type] = parseInt(x.value) || 0; });
-      const cityMins = (cp.hour === 24 ? 0 : cp.hour) * 60 + cp.minute;
+      const tp = getTimeParts(ref, city.tz);
+      const st = getCityStatus(ref, city.tz);
+      const title = city.label || city.name;
+      const sub   = city.label ? `${esc(city.name)}, ${esc(city.country)}` : esc(city.country);
       citiesHtml += `
         <div class="card city-card" data-drop-index="${i}">
           <div class="city-main">
             <div class="drag-handle-area" draggable="true" data-drag-index="${i}" role="button" tabindex="0" aria-label="Drag to reorder"><span aria-hidden="true">&#x2807;</span></div>
             <div class="city-info">
-              <div class="city-name"><span>${city.flag || '&#127758;'}</span>${esc(city.name)}
-                ${city.isLocal ? '<span style="font-size:9px;color:var(--accent);font-weight:700;margin-left:3px">YOU</span>' : ''}
+              <div class="city-name"><span>${city.flag || '&#127758;'}</span><span class="city-title">${esc(title)}</span>
+                ${city.isLocal ? '<span class="you-badge">YOU</span>' : ''}
               </div>
-              <div class="city-sub">${esc(city.country)} &middot; ${tp.abbr} &middot; ${tp.gmtOffset}</div>
+              <div class="city-sub">${sub} &middot; ${tzLabel(tp)}</div>
+              <span class="city-status ${st.cls}" id="cst-${i}">${st.icon} ${st.text}</span>
             </div>
             <div class="city-time-block">
               <div class="city-time" id="ct-${i}">${buildTimeStr(tp, S.settings)}</div>
               <div class="city-date"  id="cd-${i}">${tp.dateStr}</div>
             </div>
-            <button class="icon-btn" data-action="remove-city" data-index="${i}">&#215;</button>
+            <div class="city-actions">
+              <button class="icon-btn" data-action="edit-city" data-index="${i}" aria-label="Rename ${esc(title)}" title="Rename (e.g. client name)">&#9998;</button>
+              <button class="icon-btn" data-action="remove-city" data-index="${i}" aria-label="Remove ${esc(title)}" title="Remove">&#215;</button>
+            </div>
           </div>
           <div class="city-slider-wrap" draggable="false">
-            <input type="range" class="city-slider" id="cs-${i}" data-city-index="${i}" draggable="false" aria-label="Time slider for ${esc(city.name)}"
-              min="0" max="1439" value="${cityMins}">
+            <input type="range" class="city-slider" id="cs-${i}" data-city-index="${i}" draggable="false" aria-label="Time slider for ${esc(title)}"
+              min="0" max="1439" value="${getCityMins(ref, city.tz)}">
             <div class="slider-ticks-sm">
               <span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span>
             </div>
@@ -696,31 +810,43 @@ function renderTimeTab() {
 
   document.getElementById('tab-time').innerHTML = `
     <div class="local-block">
-      <div class="local-label">Your Local Time${custom ? ' &middot; Custom' : ''}</div>
+      <div class="local-label" id="local-label">Your Local Time${isCustomMode() ? ' &middot; Preview' : ''}</div>
       <div class="local-time" id="local-time">${buildTimeStr(lp, S.settings)}</div>
       <div class="local-date" id="local-date">${lp.dateStr}</div>
-      <div class="local-tz">${lp.abbr} &middot; ${lp.gmtOffset}</div>
+      <div class="local-tz">${tzLabel(lp)}</div>
     </div>
+    <div id="live-hint-slot">${liveHintHtml()}</div>
     <div class="section-hd">
       <span class="section-title">Time Zones</span>
       <button class="add-btn" data-action="add-city">+ Add City</button>
     </div>
     <div id="cities-list">${citiesHtml}</div>
+    ${plannerHtml()}
   `;
   setupDragDrop(document.getElementById('cities-list'), 'city');
+  updatePlannerMarker();
 }
 
 function onTimeClick(e) {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
-  if (btn.dataset.action==='add-city')    showAddCityModal();
-  if (btn.dataset.action==='remove-city') {
-    S.cities.splice(+btn.dataset.index,1);
-    saveState().then(()=>renderTimeTab());
+  const a = btn.dataset.action;
+  if (a === 'add-city') showAddCityModal();
+  if (a === 'edit-city') showRenameCityModal(+btn.dataset.index);
+  if (a === 'remove-city') {
+    S.cities.splice(+btn.dataset.index, 1);
+    saveState().then(() => renderTimeTab());
   }
-  if (btn.dataset.action==='slider-live') {
-    sliderMins = null;
-    customDate = null;
+  if (a === 'slider-live') {
+    refTime = null;
+    renderTimeTab();
+  }
+  if (a === 'toggle-planner') {
+    S.settings.showPlanner = S.settings.showPlanner === false;
+    saveState().then(() => renderTimeTab());
+  }
+  if (a === 'planner-pick') {
+    refTime = plannerStartMs() + (+btn.dataset.slot) * 1800000;
     renderTimeTab();
   }
 }
@@ -731,6 +857,27 @@ function onTimeInput(e) {
 }
 function onTimeChange(e) {
   // Per-city sliders are handled in onTimeInput; nothing to do on change.
+}
+
+// ─── Rename City Modal (client names) ────────────────
+function showRenameCityModal(index) {
+  const city = S.cities[index];
+  if (!city) return;
+  showModal('Rename city', `
+    <div class="setting-desc" style="margin-bottom:8px">Give ${esc(city.name)} a name you'll recognise, like a client's name. Leave it empty to show the city name.</div>
+    <input class="modal-search" id="city-label" maxlength="32" placeholder="e.g. Shawn (Minneapolis)" value="${esc(city.label || '')}" autocomplete="off">
+    <button class="modal-save-btn" data-action="save-label">Save</button>
+  `, sheet => {
+    const inp = sheet.querySelector('#city-label');
+    inp.focus(); inp.select();
+    const save = () => {
+      const v = inp.value.trim();
+      if (v) city.label = v; else delete city.label;
+      saveState().then(() => { hideModal(); renderTimeTab(); });
+    };
+    sheet.querySelector('[data-action="save-label"]').addEventListener('click', save);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+  });
 }
 
 // ─── Add City Modal ──────────────────────────────────
@@ -789,7 +936,36 @@ function renderCurrencyTab() {
     </div>`;
   }).join('');
 
-  // Currency rows
+  const ratesLine = S.ratesTimestamp
+    ? `<div class="rates-line">Rates: ${new Date(S.ratesTimestamp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+       · <a href="#" data-action="refresh-rates" style="color:var(--accent)">Refresh</a></div>`
+    : `<div class="rates-line" style="color:var(--warn)">⚠ Fetching rates…</div>`;
+
+  document.getElementById('tab-currency').innerHTML = `
+    <div class="curr-input-row">
+      <div class="curr-input-wrap">
+        <span class="sym">${bInfo.symbol}</span>
+        <input type="number" id="cur-amt" value="${amt}" min="0" step="any" aria-label="Amount in ${base}">
+      </div>
+      <select class="base-sel" id="cur-base" aria-label="Base currency">${baseOpts}</select>
+    </div>
+    <div class="fee-chips-row">${chipsHtml}</div>
+    ${ratesLine}
+    <div class="curr-list-wrap">
+      <div id="currencies-list">${currencyRowsHtml()}</div>
+      <button class="green-add-btn" data-action="add-currency">+ Add Currency</button>
+    </div>
+  `;
+
+  setupDragDrop(document.getElementById('currencies-list'), 'currency');
+}
+
+// Converted rows only — re-rendered on each keystroke without touching the amount input
+function currencyRowsHtml() {
+  const s    = S.settings;
+  const base = s.baseCurrency;
+  const amt  = s.currencyAmount??100;
+  const fps  = s.feeProviders||[];
   let rowsHtml='';
   if (S.currencies.length===0) {
     rowsHtml=`<div class="no-items" style="padding:20px"><div class="no-items-icon">💱</div><div>Add currencies below</div></div>`;
@@ -825,33 +1001,11 @@ function renderCurrencyTab() {
             <div class="curr-code-lbl">${code}</div>
             <div class="curr-flag-ball">${info.flag}</div>
           </div>
-          <button class="curr-del" data-action="remove-currency" data-index="${i}">×</button>
+          <button class="curr-del" data-action="remove-currency" data-index="${i}" aria-label="Remove ${code}">×</button>
         </div>`;
     });
   }
-
-  const ratesLine = S.ratesTimestamp
-    ? `<div class="rates-line">Rates: ${new Date(S.ratesTimestamp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
-       · <a href="#" data-action="refresh-rates" style="color:var(--accent)">Refresh</a></div>`
-    : `<div class="rates-line" style="color:var(--warn)">⚠ Fetching rates…</div>`;
-
-  document.getElementById('tab-currency').innerHTML = `
-    <div class="curr-input-row">
-      <div class="curr-input-wrap">
-        <span class="sym">${bInfo.symbol}</span>
-        <input type="number" id="cur-amt" value="${amt}" min="0" step="any">
-      </div>
-      <select class="base-sel" id="cur-base">${baseOpts}</select>
-    </div>
-    <div class="fee-chips-row">${chipsHtml}</div>
-    ${ratesLine}
-    <div class="curr-list-wrap">
-      <div id="currencies-list">${rowsHtml}</div>
-      <button class="green-add-btn" data-action="add-currency">+ Add Currency</button>
-    </div>
-  `;
-
-  setupDragDrop(document.getElementById('currencies-list'), 'currency');
+  return rowsHtml;
 }
 
 function onCurrencyClick(e) {
@@ -873,7 +1027,8 @@ function onCurrencyClick(e) {
 function onCurrencyInput(e) {
   if (e.target.id==='cur-amt') {
     S.settings.currencyAmount = parseFloat(e.target.value)||0;
-    renderCurrencyTab();
+    const list = document.getElementById('currencies-list');
+    if (list) list.innerHTML = currencyRowsHtml();
   }
 }
 function onCurrencyChange(e) {
@@ -1098,18 +1253,21 @@ function onPomoClick(e){
   if(a==='pomo-toggle'){
     const ph=S.pomo.phase;
     if(ph==='idle'||ph==='paused'){
-      // Start or resume
+      // Start, or resume whichever phase was paused (a paused break stays a break)
+      const resumePhase = ph==='paused' ? (S.pomo.pausedPhase||'work') : 'work';
       const secs = ph==='paused' ? (S.pomo.remainSecs||S.pomo.settings.workMins*60)
                                  : S.pomo.settings.workMins*60;
-      S.pomo.phase='work';
+      S.pomo.phase=resumePhase;
+      S.pomo.pausedPhase=null;
       S.pomo.endTime=Date.now()+secs*1000;
       S.pomo.remainSecs=null;
       chrome.alarms.create('pomo_end',{when:S.pomo.endTime});
-      if(S.pomo.settings.blockingEnabled) enableSiteBlocking(S.pomo.settings.blockedSites);
+      if(resumePhase==='work'&&S.pomo.settings.blockingEnabled) enableSiteBlocking(S.pomo.settings.blockedSites);
       saveState().then(()=>renderPomoTab());
     } else {
       // Pause
       S.pomo.remainSecs=getPomoRemaining();
+      S.pomo.pausedPhase=ph;
       S.pomo.phase='paused';
       chrome.alarms.clear('pomo_end');
       if(pomoInterval){clearInterval(pomoInterval);pomoInterval=null;}
@@ -1122,7 +1280,9 @@ function onPomoClick(e){
     chrome.alarms.clear('pomo_end');
     if(pomoInterval){clearInterval(pomoInterval);pomoInterval=null;}
     disableSiteBlocking();
-    S.pomo.phase='idle';S.pomo.endTime=null;S.pomo.remainSecs=null;S.pomo.sessions=0;
+    S.pomo.phase='idle';S.pomo.endTime=null;S.pomo.remainSecs=null;S.pomo.pausedPhase=null;S.pomo.sessions=0;
+    S.pomo.pendingNotif=null;
+    try { chrome.action.setBadgeText({ text: '' }); } catch (_) {}
     saveState().then(()=>renderPomoTab());
   }
 
@@ -1150,10 +1310,33 @@ function onPomoChange(e){
 }
 function onPomoInput(e){
   const id=e.target.id;
-  if(id==='pomo-work')     {S.pomo.settings.workMins=+e.target.value||25;saveState();}
-  if(id==='pomo-break')    {S.pomo.settings.breakMins=+e.target.value||5;saveState();}
-  if(id==='pomo-lbreak')   {S.pomo.settings.longBreakMins=+e.target.value||15;saveState();}
-  if(id==='pomo-sessions') {S.pomo.settings.sessionsBeforeLong=+e.target.value||4;saveState();}
+  const clamp=(v,lo,hi,def)=>{ v=Math.round(+v); return v>=lo ? Math.min(v,hi) : def; };
+  if(id==='pomo-work')     {S.pomo.settings.workMins=clamp(e.target.value,1,120,25);saveState();}
+  if(id==='pomo-break')    {S.pomo.settings.breakMins=clamp(e.target.value,1,60,5);saveState();}
+  if(id==='pomo-lbreak')   {S.pomo.settings.longBreakMins=clamp(e.target.value,1,60,15);saveState();}
+  if(id==='pomo-sessions') {S.pomo.settings.sessionsBeforeLong=clamp(e.target.value,2,10,4);saveState();}
+  // While idle the big timer shows the focus length, so keep it in step
+  if(id==='pomo-work'&&S.pomo.phase==='idle'){
+    const el=document.getElementById('pomo-timer');
+    if(el) el.textContent=fmtPomoTime(getPomoRemaining());
+  }
+}
+
+// The background worker moves the timer between focus/break while the popup is open:
+// pick those changes up so the popup never shows a stale 00:00 or overwrites them.
+function watchBackgroundChanges() {
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !changes.pomo?.newValue) return;
+      const nv = changes.pomo.newValue;
+      const moved = nv.phase !== S.pomo.phase || nv.endTime !== S.pomo.endTime || nv.pendingNotif?.title !== S.pomo.pendingNotif?.title;
+      S.pomo = {...DEFAULT_POMO, ...nv, settings:{...DEFAULT_POMO.settings, ...(nv.settings||{})}};
+      if (moved && currentTab === 'pomo') {
+        if (pomoInterval) { clearInterval(pomoInterval); pomoInterval = null; }
+        renderPomoTab();
+      }
+    });
+  } catch (_) {}
 }
 
 // ─── Site blocking via declarativeNetRequest ─────────
@@ -1273,7 +1456,7 @@ function renderTodoTab() {
 
   document.getElementById('tab-todo').innerHTML = `
     <div class="todo-add-row">
-      <input class="todo-inp" id="todo-inp" type="text"
+      <input class="todo-input" id="todo-inp" type="text"
         placeholder="Add a task&#x2026;" maxlength="200" autocomplete="off"
         aria-label="New task description">
       <select class="todo-priority-sel" id="todo-pri" aria-label="Task priority">
@@ -1313,9 +1496,14 @@ function onTodoClick(e) {
     const pri = document.getElementById('todo-pri');
     const text = (inp?.value || '').trim();
     if (!text) { inp?.focus(); return; }
-    S.todos.push({ id: `t${Date.now()}`, text, done: false, priority: pri?.value || 'medium', createdAt: Date.now() });
+    const priority = pri?.value || 'medium';
+    S.todos.push({ id: `t${Date.now()}`, text, done: false, priority, createdAt: Date.now() });
     inp.value = '';
-    saveState().then(() => renderTodoTab());
+    saveState().then(() => {
+      renderTodoTab();
+      document.getElementById('todo-pri').value = priority;   // keep the chosen priority for the next task
+      document.getElementById('todo-inp')?.focus();
+    });
   }
   if (a === 'toggle-todo') {
     const i = +btn.dataset.index;
@@ -1334,8 +1522,9 @@ function onTodoClick(e) {
     renderTodoTab();
   }
 }
-function onTodoInput(e) {
-  if (e.target.id === 'todo-inp' && e.key === 'Enter') {
+function onTodoKeydown(e) {
+  if (e.target.id === 'todo-inp' && e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
     document.querySelector('[data-action="add-todo"]')?.click();
   }
 }
@@ -1350,49 +1539,20 @@ function previewPomoSound(soundId) {
     playWebAudioSound(ctx, soundId);
   } catch(e) { console.warn('Sound preview:', e); }
 }
-function playWebAudioSound(ctx, type) {
-  if (type === 'none') return;
-  const now = ctx.currentTime;
-  const gain = ctx.createGain();
-  gain.connect(ctx.destination);
-  if (type === 'bell') {
-    const notes = [523.25, 659.25, 783.99, 1046.5, 783.99];
-    notes.forEach((f, i) => {
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
-      const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination);
-      const t = now + i * 0.22;
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.35, t + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-      o.start(t); o.stop(t + 0.8);
-    });
-  } else if (type === 'chime') {
-    [1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
-      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
-      const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination);
-      const t = now + i * 0.15;
-      g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
-      o.start(t); o.stop(t + 1.0);
-    });
-  } else if (type === 'digital') {
-    [880, 1760, 880].forEach((f, i) => {
-      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f;
-      const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination);
-      const t = now + i * 0.12;
-      g.gain.setValueAtTime(0.15, t); g.gain.setValueAtTime(0, t + 0.09);
-      o.start(t); o.stop(t + 0.1);
-    });
-  } else if (type === 'gentle') {
-    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 440;
-    const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination);
-    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.2, now + 0.3);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
-    o.start(now); o.stop(now + 2.0);
-  }
-}
+// playWebAudioSound() lives in sounds.js (shared with the offscreen alert player)
 
 // ═══════════════════════════════════════════════════════
 //  SETTINGS TAB (full replacement)
 // ═══════════════════════════════════════════════════════
+function appVersion() {
+  try { return chrome.runtime.getManifest().version; } catch (_) { return ''; }
+}
+function hourOpts(from, to, selected) {
+  let html = '';
+  for (let h = from; h <= to; h++) html += `<option value="${h}"${h === selected ? ' selected' : ''}>${h === 24 ? 'Midnight' : fmtHour(h)}</option>`;
+  return html;
+}
+
 function renderSettingsTab() {
   const s = S.settings;
   const fp = s.feeProviders || [];
@@ -1517,6 +1677,14 @@ function renderSettingsTab() {
           <button class="seg-btn${!s.showSeconds?' active':''}" data-setting="showSeconds" data-val="false">Off</button>
         </div>
       </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Working Hours</div><div class="setting-desc">Used for client status and "Best time to meet"</div></div>
+        <div class="work-hours">
+          <select class="base-sel" data-setting="workStart" aria-label="Working hours start">${hourOpts(0, 23, s.workStart)}</select>
+          <span class="input-suffix">to</span>
+          <select class="base-sel" data-setting="workEnd" aria-label="Working hours end">${hourOpts(1, 24, s.workEnd)}</select>
+        </div>
+      </div>
     </div>
 
     <!-- Currency -->
@@ -1564,12 +1732,11 @@ function renderSettingsTab() {
              data-url="https://www.youtube.com/@MuhammadSaid01"
              aria-label="ValuTime on YouTube">&#x1F4FA; YouTube</button>
         </div>
-        <button class="coffee-btn" disabled aria-disabled="true" title="Coming soon">
-          &#x2615; Buy me a coffee <span class="coffee-soon">coming soon</span>
-        </button>
+        <button class="coffee-btn" data-action="open-url" data-url="${SUPPORT_URL}"
+           aria-label="Buy me a coffee on Support Kori">&#x2615; Buy me a coffee</button>
       </div>
       <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-        <div class="setting-label">ValuTime v1.6.0</div>
+        <div class="setting-label">ValuTime v${appVersion()}</div>
         <div class="setting-desc">Rates: open.er-api.com &middot; Fees are estimates &mdash; always verify before sending.</div>
         <button class="add-btn" data-action="refresh-rates" style="margin-top:6px">&#8635; Refresh Rates</button>
       </div>
@@ -1627,6 +1794,16 @@ function onSettingsChange(e) {
   if (e.target.dataset.setting === 'baseCurrency') {
     S.settings.baseCurrency = e.target.value; saveState();
   }
+  // Working hours: keep the end after the start
+  if (e.target.dataset.setting === 'workStart' || e.target.dataset.setting === 'workEnd') {
+    const s = S.settings;
+    s[e.target.dataset.setting] = +e.target.value;
+    if (s.workEnd <= s.workStart) {
+      if (e.target.dataset.setting === 'workStart') s.workEnd = s.workStart + 1;
+      else s.workStart = s.workEnd - 1;
+    }
+    saveState().then(() => renderSettingsTab());
+  }
   // Checkbox toggles (highContrast, reduceMotion)
   if (e.target.type === 'checkbox' && e.target.dataset.setting) {
     S.settings[e.target.dataset.setting] = e.target.checked;
@@ -1654,12 +1831,17 @@ function showModal(title, bodyHtml, onReady) {
     </div>
     <div class="modal-body">${bodyHtml}</div>`;
   backdrop.classList.remove('hidden');
-  backdrop.addEventListener('click', e => {
+  // Assigned (not added) so it survives clicks inside the sheet and never stacks up
+  backdrop.onclick = e => {
     if (e.target === backdrop || e.target.closest('[data-action="close-modal"]')) hideModal();
-  }, { once: true });
+  };
   if (onReady) onReady(sheet);
 }
 function hideModal() { document.getElementById('modal-backdrop').classList.add('hidden'); }
+// Escape closes any open modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('modal-backdrop')?.classList.contains('hidden')) hideModal();
+});
 
 // ═══════════════════════════════════════════════════════
 //  DRAG AND DROP (already updated above)
@@ -1677,6 +1859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (S.cities.length === 0) initDefaults();
   applyTheme();
   setupTabs();
+  watchBackgroundChanges();
   renderCurrentTab();
   startClock();
   fetchRatesIfNeeded();

@@ -31,7 +31,7 @@ input,select{font-family:inherit;font-size:13px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 /* Header */
 .app-header{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0}
-.app-icon{width:26px;height:26px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.app-icon{width:26px;height:26px;flex-shrink:0;display:block}
 .app-name{font-weight:700;font-size:14px;flex:1}
 .header-clock{font-size:11px;color:var(--text2);text-align:right;line-height:1.3;font-variant-numeric:tabular-nums}
 .header-clock .hc-t{font-weight:700;font-size:12px;color:var(--text)}
@@ -292,24 +292,6 @@ input[type=range].city-slider::-webkit-slider-thumb:active{cursor:grabbing;backg
 .slider-ticks-sm{display:flex;justify-content:space-between;padding:2px 2px 0;margin-top:2px}
 .slider-ticks-sm span{font-size:8px;color:var(--text3)}
 
-/* ── Custom time compare card ── */
-.custom-time-card{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:9px 12px;margin-bottom:9px;box-shadow:var(--shadow)}
-.custom-time-card .ctc-label{width:100%;font-size:10px;font-weight:800;letter-spacing:.5px;
-  text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:6px}
-.custom-time-card input[type=time],
-.custom-time-card input[type=date]{padding:7px 9px;border:1px solid var(--border);
-  border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);
-  font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
-.custom-time-card input[type=date]{flex:1;min-width:120px}
-.custom-time-card input:focus{outline:none;border-color:var(--accent)}
-.ctc-badge{font-size:9px;font-weight:800;color:#fff;background:var(--warn);
-  padding:1px 7px;border-radius:99px;letter-spacing:.4px}
-.ctc-live{margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;
-  padding:6px 13px;border:1px solid var(--accent);border-radius:99px;
-  background:var(--accent-bg);min-height:32px}
-.ctc-live:hover{background:var(--accent);color:#fff}
 
 /* ── Live hint bar ── */
 .live-hint{display:flex;align-items:center;gap:8px;padding:6px 12px;
@@ -876,3 +858,71 @@ body.layout-ocd .todo-progress-wrap { display:flex; }
   font-size:12px; font-weight:800; color:var(--text2);
   font-variant-numeric:tabular-nums; min-width:34px; text-align:right;
 }
+
+/* ══════════════════════════════════════════════════════
+   v1.7 — client status, client names, meeting planner
+   ══════════════════════════════════════════════════════ */
+.city-name{min-width:0}
+.city-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.you-badge{font-size:9px;color:var(--accent);font-weight:700;flex-shrink:0}
+.city-actions{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.icon-btn[data-action="edit-city"]{font-size:13px}
+.icon-btn[data-action="edit-city"]:hover{background:var(--accent-bg);color:var(--accent)}
+
+.city-status{display:inline-flex;align-items:center;gap:3px;margin-top:4px;padding:1px 7px;
+  border-radius:99px;font-size:9.5px;font-weight:700;line-height:1.6;color:var(--text);
+  background:var(--bg3)}
+.city-status.working{background:color-mix(in srgb,var(--success) 18%,transparent)}
+.city-status.off{background:color-mix(in srgb,var(--warn) 18%,transparent)}
+.city-status.asleep{background:color-mix(in srgb,#6366f1 18%,transparent)}
+.city-status.weekend{background:var(--bg3)}
+
+/* Preview banner: readable in light and dark */
+.live-hint{background:color-mix(in srgb,var(--warn) 14%,var(--surface));color:var(--text);
+  border-color:color-mix(in srgb,var(--warn) 60%,transparent);font-size:11.5px;line-height:1.35}
+.live-hint .live-btn{white-space:nowrap;flex-shrink:0;background:var(--surface)}
+
+/* Meeting planner */
+.planner{padding:9px 10px 8px;margin-top:8px}
+.planner-hd{display:flex;align-items:center;gap:6px;width:100%;text-align:left;min-height:24px}
+.planner-hours{margin-left:auto;font-size:10px;color:var(--text2)}
+.planner-chev{color:var(--text3);font-size:11px;width:10px}
+.planner-summary{font-size:11.5px;line-height:1.4;margin:8px 0;padding:6px 8px;border-radius:var(--radius-sm);color:var(--text)}
+.planner-summary.good{background:color-mix(in srgb,var(--success) 15%,transparent)}
+.planner-summary.warn{background:color-mix(in srgb,var(--warn) 15%,transparent)}
+.planner-summary.muted{background:var(--bg2);color:var(--text2)}
+.planner-grid{position:relative}
+.planner-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.planner-lbl{width:86px;flex-shrink:0;font-size:10.5px;font-weight:600;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.planner-row.you .planner-lbl{color:var(--accent)}
+.planner-bar{flex:1;display:grid;grid-template-columns:repeat(48,1fr);height:14px;
+  border-radius:4px;overflow:hidden;background:var(--bg3);cursor:pointer}
+.pc{display:block;height:100%}
+.pc.on{background:color-mix(in srgb,var(--accent) 55%,transparent)}
+.pc.best{background:color-mix(in srgb,var(--success) 22%,transparent)}
+.pc.best.on{background:var(--success)}
+.pc:hover{box-shadow:inset 0 0 0 1px var(--text)}
+.planner-row.axis{margin:2px 0 0}
+.planner-axis{flex:1;display:flex;justify-content:space-between}
+.planner-axis span{font-size:8px;color:var(--text3)}
+.planner-now{position:absolute;top:-2px;bottom:12px;width:2px;margin-left:-1px;border-radius:1px;
+  background:var(--danger);pointer-events:none}
+.planner-tip{font-size:9.5px;color:var(--text3);margin-top:5px}
+body.reduce-motion .planner-now{transition:none}
+
+/* Working hours (Settings) */
+.work-hours{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.work-hours .base-sel{padding:5px 6px;font-size:12px}
+
+/* To-Do: styles the list was missing */
+.todo-input{min-width:0}
+.todo-filters{margin-bottom:8px;flex-wrap:wrap}
+.todo-count{font-size:10px;opacity:.75;margin-left:2px}
+#todo-list{display:flex;flex-direction:column;gap:4px}
+.todo-priority{font-size:12px;flex-shrink:0;margin-top:2px}
+.todo-stats{font-size:11px;color:var(--text3);text-align:center;margin-top:8px}
+
+/* Support / Buy me a coffee (now live) */
+.coffee-btn{cursor:pointer;border:1px solid transparent;background:#f59e0b;color:#1f1300;font-weight:700}
+.coffee-btn:hover{background:#d97706;color:#fff}
